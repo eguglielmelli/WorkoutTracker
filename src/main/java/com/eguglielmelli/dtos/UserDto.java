@@ -1,78 +1,39 @@
-package com.eguglielmelli.entities;
+package com.eguglielmelli.dtos;
 
 import javax.validation.constraints.*;
-import javax.persistence.*;
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "users")
-public class User {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
-    private Long id;
+public class UserDto {
 
     @NotNull
     @NotEmpty
-    @Column(name = "full_name", nullable = false)
     private String fullName;
 
     @NotNull
     @NotEmpty
-    @Column(name = "username", nullable = false, unique = true)
     private String username;
 
     @NotNull
     @NotEmpty
-    @Column(name = "password", nullable = false)
     private String password;
 
     @NotNull
     @Email
     @NotEmpty
-    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
     @Min(0)
-    @Column(name = "age")
     private int age;
 
-    @Column(name = "weight", scale = 1, precision = 5)
+    @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal weight;
 
-    @Column(name = "height", scale = 1, precision = 5)
+
+    @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal height;
 
-    @NotNull
-    @Column(name = "metric_system", nullable = false)
     private boolean metricSystem;
 
-    @NotNull
-    @Column(name = "is_deleted", nullable = false)
-    private boolean isDeleted = false;
-
-
-    public User() {
-    }
-
-    public User(String fullName, String username, String password,
-                String email, int age, BigDecimal weight, BigDecimal height,
-                boolean metricSystem, boolean isDeleted) {
-        this.fullName = fullName;
-        this.username = username;
-        this.password = password;
-        this.email = email;
-        this.age = age;
-        this.weight = weight;
-        this.height = height;
-        this.metricSystem = metricSystem;
-        this.isDeleted = isDeleted;
-    }
-
-    public Long getId() {
-        return id;
-    }
 
     public String getFullName() {
         return fullName;
@@ -136,13 +97,5 @@ public class User {
 
     public void setMetricSystem(boolean metricSystem) {
         this.metricSystem = metricSystem;
-    }
-
-    public boolean isDeleted() {
-        return isDeleted;
-    }
-
-    public void setDeleted(boolean isDeleted) {
-        this.isDeleted = isDeleted;
     }
 }
