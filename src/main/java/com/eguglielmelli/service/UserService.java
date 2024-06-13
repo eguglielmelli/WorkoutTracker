@@ -2,11 +2,13 @@ package com.eguglielmelli.service;
 import com.eguglielmelli.dtos.UserDto;
 import com.eguglielmelli.entities.User;
 import com.eguglielmelli.repositories.UserRepository;
+import com.sun.xml.bind.v2.TODO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
+import javax.validation.Valid;
 import java.math.BigDecimal;
 import java.util.Optional;
 
@@ -32,7 +34,7 @@ public class UserService {
      * @param userDto to hold user data being transferred
      */
     @Transactional
-    public void createUser(UserDto userDto) {
+    public User createUser(@Valid UserDto userDto) {
 
         //validate the given information
         validateUserBeforeCreation(userDto);
@@ -45,7 +47,16 @@ public class UserService {
                 userDto.getEmail(),userDto.getAge(), weight, height,
                 userDto.isMetricSystem(),false
         );
-        userRepository.save(user);
+        //VERY IMPORTANT: encode user password before sending to the repository
+        String encodedPassword = passwordEncoder.encode(userDto.getPassword());
+        userDto.setPassword(encodedPassword);
+
+        return userRepository.save(user);
+    }
+    // TODO implement soft delete method (just marking isDeleted = true)
+    @Transactional
+    public boolean deleteUser(Long id) {
+        return false;
     }
 
     /**
@@ -63,9 +74,7 @@ public class UserService {
         }
 
         //username must be unique according to our annotations, so we check here
-        Optional<User> foundUserWithUsername = userRepository.findByusername(userDto.getUsername());
-
-        if(foundUserWithUsername.isPresent()) {
+        if(userRepository.findByusername(userDto.getUsername()).isPresent()) {
             throw new IllegalArgumentException("A user with this username already exists.");
         }
 
@@ -74,20 +83,13 @@ public class UserService {
         }
 
         //need to do the same thing as above with email, spring should check format
-        Optional<User> foundUserWithEmail = userRepository.findByemail(userDto.getEmail());
-
-        if(foundUserWithEmail.isPresent()) {
+        if(userRepository.findByemail(userDto.getEmail()).isPresent()) {
             throw new IllegalArgumentException("A user with this email already exists.");
         }
 
         if(userDto.getPassword() == null || userDto.getPassword().isEmpty()) {
             throw new IllegalArgumentException("Password must not be empty or null.");
         }
-
-        //VERY IMPORTANT: encode user password because after this method
-        //it is going to the repository
-        String encodedPassword = passwordEncoder.encode(userDto.getPassword());
-        userDto.setPassword(encodedPassword);
 
         Integer age = Optional.ofNullable(userDto.getAge()).orElse(0);
         if(age < 0) {

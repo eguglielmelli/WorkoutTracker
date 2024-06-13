@@ -46,7 +46,7 @@ public class User {
 
     @NotNull
     @Column(name = "metric_system", nullable = false)
-    private boolean metricSystem;
+    private boolean metricSystem = false;
 
     @NotNull
     @Column(name = "is_deleted", nullable = false)

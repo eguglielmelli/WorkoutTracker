@@ -32,7 +32,7 @@ public class UserDto {
     @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal height;
 
-    private boolean metricSystem;
+    private boolean metricSystem = false;
 
 
     public String getFullName() {
