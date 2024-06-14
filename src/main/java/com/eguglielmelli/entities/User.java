@@ -1,5 +1,6 @@
 package com.eguglielmelli.entities;
 
+import javax.validation.Valid;
 import javax.validation.constraints.*;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -39,9 +40,11 @@ public class User {
     private int age;
 
     @Column(name = "weight", scale = 1, precision = 5)
+    @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal weight;
 
     @Column(name = "height", scale = 1, precision = 5)
+    @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal height;
 
     @NotNull
@@ -68,6 +71,10 @@ public class User {
         this.height = height;
         this.metricSystem = metricSystem;
         this.isDeleted = isDeleted;
+    }
+    //Strictly for testing purposes, otherwise, database will assign id
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public Long getId() {

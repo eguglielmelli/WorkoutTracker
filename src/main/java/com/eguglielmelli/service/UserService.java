@@ -2,15 +2,18 @@ package com.eguglielmelli.service;
 import com.eguglielmelli.dtos.UserDto;
 import com.eguglielmelli.entities.User;
 import com.eguglielmelli.repositories.UserRepository;
-import com.sun.xml.bind.v2.TODO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.validation.annotation.Validated;
 
 import javax.transaction.Transactional;
 import javax.validation.Valid;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Service class that will handle our CRUD operations, methods will be called in the corresponding
@@ -53,10 +56,61 @@ public class UserService {
 
         return userRepository.save(user);
     }
-    // TODO implement soft delete method (just marking isDeleted = true)
+
+    /**
+     * Soft delete the user from the database if they choose
+     * we will just mark isDeleted() to be true, save to repository and return
+     * @param id user's id
+     * @return true if soft delete and false if user is not found
+     */
     @Transactional
     public boolean deleteUser(Long id) {
-        return false;
+        return updateUser(id, user -> user.setDeleted(true));
+    }
+
+    /**
+     * Gives user opportunity to switch measurement system if they like (i.e. from metric to imperial)
+     * @param id of the user
+     * @param measurementSystem boolean: true for metric, false for imperial
+     * @return true if correctly set, else false
+     */
+    @Transactional
+    public boolean changeMeasurementSystem(Long id, boolean measurementSystem) {
+        return updateUser(id, user -> user.setMetricSystem(measurementSystem));
+    }
+
+    /**
+     * Gives user the opportunity to change their weight
+     * such as if they decided to forego during profile setup or if they
+     * just want to change it
+     * @param id of user
+     * @param weight of user
+     * @return true if successfully saved, otherwise false
+     */
+    @Transactional
+    public boolean changeWeight(Long id, BigDecimal weight) {
+        if(weight == null || weight.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Weight must be greater than or equal to 0");
+        }
+        BigDecimal roundedWeight = weight.setScale(1, RoundingMode.HALF_UP);
+        return updateUser(id, user -> user.setWeight(roundedWeight));
+    }
+
+    /**
+     * Gives user the opportunity to change their height
+     * @param id of user
+     * @param height new height they enter
+     * throws exception if user enters null or negative weight
+     * @return true if height updated, false if not
+     */
+    @Transactional
+    public boolean changeHeight(Long id, BigDecimal height) {
+        if(height == null || height.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Height must be greater than or equal to 0");
+        }
+
+        BigDecimal roundedHeight = height.setScale(1, RoundingMode.HALF_UP);
+        return updateUser(id, user -> user.setHeight(roundedHeight));
     }
 
     /**
@@ -95,5 +149,16 @@ public class UserService {
         if(age < 0) {
             throw new IllegalArgumentException("Age must be greater than 0.");
         }
+    }
+
+    private boolean updateUser(Long id, Consumer<User> updateAction) {
+        Optional<User> foundUser = userRepository.findById(id);
+        if(foundUser.isPresent()) {
+            User user = foundUser.get();
+            updateAction.accept(user);
+            userRepository.save(user);
+            return true;
+        }
+        return false;
     }
 }

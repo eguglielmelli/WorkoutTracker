@@ -2,6 +2,7 @@ package com.eguglielmelli.service;
 import com.eguglielmelli.dtos.UserDto;
 import com.eguglielmelli.entities.User;
 import com.eguglielmelli.repositories.UserRepository;
+import org.apache.tomcat.util.bcel.Const;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -9,10 +10,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
+import javax.validation.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Optional;
@@ -38,6 +36,7 @@ public class UserServiceTest {
         MockitoAnnotations.openMocks(this);
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
+
     }
 
     @Test
@@ -227,6 +226,209 @@ public class UserServiceTest {
         assertEquals("must be greater than or equal to 0.0", violation.getMessage());
     }
 
+    @Test
+    public void deleteUserTest_Normal_Success() {
+        //we will be using regular user for this test since dto
+        //does not have id
+        User exampleUser = createExampleUser();
+
+
+        //return a user with this id
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+        when(userRepository.save(any(User.class))).thenReturn(exampleUser);
+
+        boolean result = userService.deleteUser(exampleUser.getId());
+
+        assertTrue(result);
+        assertTrue(exampleUser.isDeleted());
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+
+    }
+
+    @Test
+    public void deleteUserTest_userDoesNotExist_shouldReturnFalse() {
+        Long userId = 1L;
+        //mock return no user with given id
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        boolean result = userService.deleteUser(userId);
+
+        assertFalse(result);
+        verify(userRepository, times(1)).findById(userId);
+        verify(userRepository,times(0)).save(any(User.class));
+    }
+
+    @Test
+    public void changeMeasurementSystemTest_Normal_Success() {
+        //Important: isMetricSystem is set to false by default in these tests
+        //so we will try setting it to true in this method
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        boolean result = userService.changeMeasurementSystem(exampleUser.getId(), true);
+
+        assertTrue(result);
+        assertTrue(exampleUser.isMetricSystem());
+
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    @Test
+    public void changeMeasurementSystemTest_userDoesNotExist_shouldReturnFalse() {
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.empty());
+
+        // example user is metric system always set to false, so we must try to set it to true
+        boolean result = userService.changeMeasurementSystem(exampleUser.getId(), true);
+
+        assertFalse(result);
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(0)).save(any(User.class));
+    }
+
+    @Test
+    public void changeWeightTest_Normal_Success() {
+        // normal test case where the weight should simply be set
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        boolean result = userService.changeWeight(exampleUser.getId(), BigDecimal.valueOf(177.4));
+
+        assertTrue(result);
+
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+
+    }
+
+    @Test
+    public void changeWeightTest_negativeWeight_shouldThrowException() {
+        //user tries to change to negative weight, this is not allowed
+        User exampleUser = createExampleUser();
+
+        BigDecimal negativeWeight = BigDecimal.valueOf(-177.5);
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            userService.changeWeight(exampleUser.getId(), negativeWeight);
+        });
+
+        assertEquals("Weight must be greater than or equal to 0", exception.getMessage());
+        assertEquals(BigDecimal.valueOf(170.0), exampleUser.getWeight());
+
+        verify(userRepository,never()).findById(exampleUser.getId());
+        verify(userRepository, never()).save(any(User.class));
+
+    }
+    @Test
+    public void changeWeightTest_extraDecimalPlaces_shouldRoundToOne() {
+        //user enters weight with a couple extra decimal places
+        //function must round to one before saving to repository
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        boolean result = userService.changeWeight(exampleUser.getId(), BigDecimal.valueOf(170.456456));
+
+        assertTrue(result);
+        assertEquals(BigDecimal.valueOf(170.5), exampleUser.getWeight());
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+    }
+
+    @Test
+    public void changeWeightTest_nullWeight_shouldThrowException() {
+        //calling the function with null needs to throw exception
+        User exampleUser = createExampleUser();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            userService.changeWeight(exampleUser.getId(), null);
+        });
+
+        assertEquals("Weight must be greater than or equal to 0", exception.getMessage());
+        assertEquals(BigDecimal.valueOf(170.0), exampleUser.getWeight());
+
+        verify(userRepository, never()).findById(exampleUser.getId());
+        verify(userRepository, never()).save(any(User.class));
+
+    }
+
+    @Test
+    public void changeHeightTest_Normal_Success() {
+        //this is a simple case, height should be updated after
+        //calling the function with a height > 0
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        boolean result = userService.changeHeight(exampleUser.getId(), BigDecimal.valueOf(65.0));
+
+        assertTrue(result);
+        assertEquals(BigDecimal.valueOf(65.0), exampleUser.getHeight());
+
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+
+    }
+
+    @Test
+    public void changeHeightTest_negativeWeight_shouldThrowException() {
+        //user enters negative height, we need to make sure the method
+        //throws an illegalArgumentException and the repository doesn't save
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            userService.changeHeight(createExampleUser().getId(), BigDecimal.valueOf(-50.0));
+        });
+
+        assertEquals("Height must be greater than or equal to 0", exception.getMessage());
+        verify(userRepository, never()).findById(exampleUser.getId());
+        verify(userRepository, never()).save(exampleUser);
+    }
+
+    @Test
+    public void changeHeightTest_nullWeight_shouldThrowException() {
+        //user enters null in the height, so method must throw an
+        //illegalArgumentException
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            userService.changeHeight(createExampleUser().getId(), null);
+        });
+
+        assertEquals("Height must be greater than or equal to 0", exception.getMessage());
+        verify(userRepository, never()).findById(exampleUser.getId());
+        verify(userRepository, never()).save(exampleUser);
+
+    }
+
+    @Test
+    public void changeHeightTest_extraDecimalPlaces_shouldRoundToOne() {
+        //user enters multiple decimal places, the method should
+        //round it to one decimal place and successfully save
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        boolean result = userService.changeHeight(exampleUser.getId(), BigDecimal.valueOf(65.43434444));
+
+        assertTrue(result);
+        assertEquals(BigDecimal.valueOf(65.4), exampleUser.getHeight());
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+
+    }
+
     /**
      * Since we're creating so many sample objects, combining into one method
      * and can adjust attributes as necessary
@@ -242,5 +444,26 @@ public class UserServiceTest {
         userDto.setWeight(BigDecimal.valueOf(175.0));
         userDto.setHeight(BigDecimal.valueOf(75));
         return userDto;
+    }
+
+    /**
+     * Helper method to create a user for methods that don't deal with data transfer
+     * metric system always default to negative here, and id always == 1
+     * @return set up User object
+     */
+    private User createExampleUser() {
+        User user = new User();
+        Long userId = 1L;
+        user.setId(userId);
+        user.setFullName("Test User");
+        user.setEmail("test@gmail.com");
+        user.setUsername("test_user");
+        user.setPassword("password");
+        user.setDeleted(false);
+        user.setWeight(BigDecimal.valueOf(170.0));
+        user.setHeight(BigDecimal.valueOf(70.0));
+        user.setMetricSystem(false);
+
+        return user;
     }
 }
