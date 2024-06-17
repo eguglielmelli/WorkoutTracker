@@ -429,6 +429,46 @@ public class UserServiceTest {
 
     }
 
+    @Test
+    public void getUserInfoTest_Normal_Success() {
+        //test scenario where a user actually exists in the db, should
+        //return the user object
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        User foundUser = userService.getUserInfo(exampleUser.getId());
+
+        assertEquals(1L, foundUser.getId());
+        assertEquals("Test User", foundUser.getFullName());
+        assertEquals("test@gmail.com", foundUser.getEmail());
+        assertEquals("password", foundUser.getPassword());
+        assertEquals("test_user", foundUser.getUsername());
+        assertEquals(BigDecimal.valueOf(170.0), foundUser.getWeight());
+        assertEquals(BigDecimal.valueOf(70.0), foundUser.getHeight());
+        assertFalse(foundUser.isMetricSystem());
+
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+
+    }
+
+    @Test
+    public void getUserInfoTest_userNotFound_shouldThrowException() {
+        //test scenario where user id is not found in the repository
+        //we want to throw an exception in this case
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            userService.getUserInfo(exampleUser.getId());
+        });
+
+        assertEquals("User with that id is not found", exception.getMessage());
+
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+    }
+
     /**
      * Since we're creating so many sample objects, combining into one method
      * and can adjust attributes as necessary

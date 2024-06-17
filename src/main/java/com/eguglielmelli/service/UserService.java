@@ -5,9 +5,6 @@ import com.eguglielmelli.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionalEventListener;
-import org.springframework.validation.annotation.Validated;
-
 import javax.transaction.Transactional;
 import javax.validation.Valid;
 import java.math.BigDecimal;
@@ -114,6 +111,22 @@ public class UserService {
     }
 
     /**
+     * Method to get user's info such as name, password etc
+     * This will be displayed in a menu where users can adjust info as needed
+     * @param id of user
+     * @return user object corresponding to the given id
+     */
+    @Transactional
+    public User getUserInfo(Long id) {
+        Optional<User> foundUser = userRepository.findById(id);
+        if(foundUser.isPresent()) {
+            return foundUser.get();
+        }
+        throw new RuntimeException("User with that id is not found");
+    }
+
+
+    /**
      * Validation method to make sure user data is acceptable before
      * saving it to the user repository in createUser()
      * @param userDto to carry user data being transferred
@@ -151,6 +164,13 @@ public class UserService {
         }
     }
 
+    /**
+     * Method allow for cleaning up duplicate code in deleting and updating various attributes
+     * of user class
+     * @param id of user
+     * @param updateAction which parameter will be passed into the prospective methods
+     * @return true if success, false otherwise
+     */
     private boolean updateUser(Long id, Consumer<User> updateAction) {
         Optional<User> foundUser = userRepository.findById(id);
         if(foundUser.isPresent()) {
