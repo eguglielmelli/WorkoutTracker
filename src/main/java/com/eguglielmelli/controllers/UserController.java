@@ -1,5 +1,6 @@
 package com.eguglielmelli.controllers;
 import com.eguglielmelli.dtos.UserDto;
+import com.eguglielmelli.dtos.UserUpdateDto;
 import com.eguglielmelli.entities.User;
 import com.eguglielmelli.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,11 +11,13 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
 
+    @Autowired
     private final UserService userService;
 
     @Autowired
@@ -37,19 +40,17 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
     }
-    @PutMapping("/{id}/changeWeight")
-    public ResponseEntity<User> changeWeight(@PathVariable Long id, @RequestBody Map<String, BigDecimal> requestBody) {
-        BigDecimal weight = requestBody.get("weight");
-        boolean weightUpdated = userService.changeWeight(id, weight);
 
-        return weightUpdated ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
-    }
-    @PutMapping("/{id}/changeHeight")
-    public ResponseEntity<User> changeHeight(@PathVariable Long id, @RequestBody Map<String,BigDecimal> requestBody) {
-        BigDecimal height = requestBody.get("height");
-        boolean heightUpdated = userService.changeHeight(id, height);
-
-        return heightUpdated ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
+    @PutMapping("/{id}/update")
+    public ResponseEntity<User> updateUserInfo(@PathVariable Long id, @RequestBody UserUpdateDto userUpdateDto) {
+        boolean updated = userService.updateUserInfo(id, userUpdateDto);
+        System.out.println(updated);
+        return updated ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
     }
 
+    @GetMapping("/{id}/info")
+    public ResponseEntity<?> getUserInfo(@PathVariable Long id) {
+        Optional<User> foundUser = userService.getUserInfo(id);
+        return new ResponseEntity<>(foundUser,HttpStatus.OK);
+    }
 }

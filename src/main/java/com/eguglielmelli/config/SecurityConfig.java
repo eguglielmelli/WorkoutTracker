@@ -1,5 +1,4 @@
 package com.eguglielmelli.config;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,9 +18,14 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf().disable()
+        http
+                .csrf().disable()
                 .authorizeRequests()
-                .anyRequest().permitAll();
+                .antMatchers("/api/users/**").permitAll()
+                .anyRequest().authenticated()
+                .and()
+                .httpBasic();
+
         return http.build();
     }
 }

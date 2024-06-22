@@ -1,33 +1,28 @@
 package com.eguglielmelli.dtos;
-import javax.validation.constraints.DecimalMin;
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
+import javax.validation.constraints.*;
 import java.math.BigDecimal;
 
 public class UserUpdateDto {
 
-    @NotNull
-    @NotEmpty
+    @Email
     private String email;
 
-    @NotNull
-    @NotEmpty
+
     private String password;
 
-    @NotNull
-    @NotEmpty
+    @Size(min = 1, message = "Username must not be empty")
     private String username;
 
-    @NotNull
-    @NotEmpty
+
     private boolean isMetricSystem;
 
+    @Min(0)
     private int age;
 
-    @DecimalMin(value = "0.0", inclusive = true)
+    @DecimalMin("0.0")
     private BigDecimal weight;
 
-    @DecimalMin(value = "0.0", inclusive = true)
+    @DecimalMin("0.0")
     private BigDecimal height;
 
     public String getEmail() {

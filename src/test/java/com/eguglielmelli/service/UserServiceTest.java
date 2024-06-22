@@ -1,21 +1,19 @@
 package com.eguglielmelli.service;
 import com.eguglielmelli.dtos.UserDto;
+import com.eguglielmelli.dtos.UserUpdateDto;
 import com.eguglielmelli.entities.User;
 import com.eguglielmelli.repositories.UserRepository;
-import org.apache.tomcat.util.bcel.Const;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import javax.validation.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Optional;
 import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -36,6 +34,7 @@ public class UserServiceTest {
         MockitoAnnotations.openMocks(this);
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
+        userService = new UserService(userRepository, passwordEncoder, validator);
 
     }
 
@@ -67,6 +66,34 @@ public class UserServiceTest {
 
         verify(passwordEncoder, times(1)).encode("password");
         verify(userRepository, times(1)).save(any(User.class));
+
+    }
+
+    @Test
+    public void createUserTest_SomeCapitals_shouldCastToLowerCase() {
+        //Sample case where email and username have capital letters
+        //testing if they are stored as lowercase for uniformity
+        UserDto userDto = createUserDto();
+        userDto.setUsername("TEST_uSeR");
+        userDto.setEmail("EXAMPLE@GMAIL.COM");
+
+        User user = new User("Test User", "test_user","encodedPassword","example@gmail.com",
+                30,BigDecimal.valueOf(175).setScale(1,RoundingMode.HALF_UP),BigDecimal.valueOf(70).setScale(1,RoundingMode.HALF_UP),false,false);
+
+        when(passwordEncoder.encode("password")).thenReturn("encodedPassword");
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        User createdUser = userService.createUser(userDto);
+
+        assertNotNull(createdUser);
+        assertEquals("example@gmail.com", createdUser.getEmail());
+        assertEquals("Test User",createdUser.getFullName());
+        assertEquals("test_user",createdUser.getUsername());
+        assertEquals("encodedPassword",createdUser.getPassword());
+        assertEquals(new BigDecimal("175.0"),createdUser.getWeight());
+        assertEquals(new BigDecimal("70.0"),createdUser.getHeight());
+        assertEquals(30,createdUser.getAge());
+        assertFalse(createdUser.isMetricSystem());
 
     }
 
@@ -260,173 +287,261 @@ public class UserServiceTest {
     }
 
     @Test
-    public void changeMeasurementSystemTest_Normal_Success() {
-        //Important: isMetricSystem is set to false by default in these tests
-        //so we will try setting it to true in this method
+    public void updateUserInfoTest_onlyEmailIncluded_Normal_Success() {
+        //normal case here, only including email just to make sure
+        //if user only wants to include one piece of info to update, they can
         User exampleUser = createExampleUser();
 
         when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
 
-        boolean result = userService.changeMeasurementSystem(exampleUser.getId(), true);
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setEmail("update_user@gmail.com");
+
+        boolean result = userService.updateUserInfo(exampleUser.getId(), userUpdateDto);
 
         assertTrue(result);
+        assertEquals("update_user@gmail.com",exampleUser.getEmail());
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+
+    }
+
+    @Test
+    public void updateUserInfoTest_onlyUsernameIncluded_Normal_Success() {
+        //same as above, just testing username this time
+
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setUsername("testing_update_user");
+
+        boolean result = userService.updateUserInfo(exampleUser.getId(), userUpdateDto);
+
+        assertTrue(result);
+        assertEquals("testing_update_user",exampleUser.getUsername());
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+    }
+
+    @Test
+    public void updateUserInfoTest_onlyAgeIncluded_Normal_Success() {
+        //same, just including age this time
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setAge(35);
+
+        boolean result = userService.updateUserInfo(exampleUser.getId(), userUpdateDto);
+
+        assertTrue(result);
+        assertEquals(35,exampleUser.getAge());
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+    }
+
+    @Test
+    public void updateUserInfoTest_onlyHeightIncluded_Normal_Success() {
+        //only height tested
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setHeight(BigDecimal.valueOf(75));
+
+        boolean result = userService.updateUserInfo(exampleUser.getId(), userUpdateDto);
+
+        assertTrue(result);
+        assertEquals(BigDecimal.valueOf(75.0),exampleUser.getHeight());
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+    }
+
+    @Test
+    public void updateUserInfoTest_onlyWeightIncluded_Normal_Success() {
+        //only weight tested
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setWeight(BigDecimal.valueOf(67.5));
+
+        boolean result = userService.updateUserInfo(exampleUser.getId(), userUpdateDto);
+
+        assertTrue(result);
+        assertEquals(BigDecimal.valueOf(67.5),exampleUser.getWeight());
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
+    }
+
+    @Test
+    public void updateUserInfoTest_multipleFieldsIncluded_Normal_Success() {
+        //multiple fields simulating if a user was updating almost
+        //all of their info
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setWeight(BigDecimal.valueOf(67.5));
+        userUpdateDto.setEmail("updated_email@gmail.com");
+        userUpdateDto.setUsername("updated_username");
+        userUpdateDto.setMetricSystem(true);
+        userUpdateDto.setAge(46);
+        userUpdateDto.setHeight(BigDecimal.valueOf(70.0));
+
+        boolean result = userService.updateUserInfo(exampleUser.getId(), userUpdateDto);
+
+        assertTrue(result);
+        assertEquals(46, exampleUser.getAge());
+        assertEquals("updated_username", exampleUser.getUsername());
         assertTrue(exampleUser.isMetricSystem());
-
-        verify(userRepository, times(1)).findById(exampleUser.getId());
-        verify(userRepository, times(1)).save(any(User.class));
-    }
-
-    @Test
-    public void changeMeasurementSystemTest_userDoesNotExist_shouldReturnFalse() {
-        User exampleUser = createExampleUser();
-
-        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.empty());
-
-        // example user is metric system always set to false, so we must try to set it to true
-        boolean result = userService.changeMeasurementSystem(exampleUser.getId(), true);
-
-        assertFalse(result);
-        verify(userRepository, times(1)).findById(exampleUser.getId());
-        verify(userRepository, times(0)).save(any(User.class));
-    }
-
-    @Test
-    public void changeWeightTest_Normal_Success() {
-        // normal test case where the weight should simply be set
-        User exampleUser = createExampleUser();
-
-        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
-
-        boolean result = userService.changeWeight(exampleUser.getId(), BigDecimal.valueOf(177.4));
-
-        assertTrue(result);
-
-        verify(userRepository, times(1)).findById(exampleUser.getId());
-        verify(userRepository, times(1)).save(exampleUser);
-
-    }
-
-    @Test
-    public void changeWeightTest_negativeWeight_shouldThrowException() {
-        //user tries to change to negative weight, this is not allowed
-        User exampleUser = createExampleUser();
-
-        BigDecimal negativeWeight = BigDecimal.valueOf(-177.5);
-
-        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            userService.changeWeight(exampleUser.getId(), negativeWeight);
-        });
-
-        assertEquals("Weight must be greater than or equal to 0", exception.getMessage());
-        assertEquals(BigDecimal.valueOf(170.0), exampleUser.getWeight());
-
-        verify(userRepository,never()).findById(exampleUser.getId());
-        verify(userRepository, never()).save(any(User.class));
-
-    }
-    @Test
-    public void changeWeightTest_extraDecimalPlaces_shouldRoundToOne() {
-        //user enters weight with a couple extra decimal places
-        //function must round to one before saving to repository
-        User exampleUser = createExampleUser();
-
-        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
-
-        boolean result = userService.changeWeight(exampleUser.getId(), BigDecimal.valueOf(170.456456));
-
-        assertTrue(result);
-        assertEquals(BigDecimal.valueOf(170.5), exampleUser.getWeight());
+        assertEquals(BigDecimal.valueOf(70.0), exampleUser.getHeight());
+        assertEquals("updated_email@gmail.com", exampleUser.getEmail());
+        assertEquals(BigDecimal.valueOf(67.5),exampleUser.getWeight());
         verify(userRepository, times(1)).findById(exampleUser.getId());
         verify(userRepository, times(1)).save(exampleUser);
     }
 
     @Test
-    public void changeWeightTest_nullWeight_shouldThrowException() {
-        //calling the function with null needs to throw exception
+    public void updateUserInfoTest_invalidEmailFormat_shouldViolateConstraint() {
+        //trying to update email but putting in a bad email format
+        //letting java handle the validation
         User exampleUser = createExampleUser();
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            userService.changeWeight(exampleUser.getId(), null);
-        });
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
 
-        assertEquals("Weight must be greater than or equal to 0", exception.getMessage());
-        assertEquals(BigDecimal.valueOf(170.0), exampleUser.getWeight());
+
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setEmail("email.gmail");
+
+        Set<ConstraintViolation<UserUpdateDto>> violations = validator.validate(userUpdateDto);
+        assertFalse(violations.isEmpty());
+
+        ConstraintViolation<UserUpdateDto> violation = violations.iterator().next();
+
+        assertEquals("must be a well-formed email address", violation.getMessage());
+
+        //checking that email never changed
+        assertEquals("test@gmail.com", exampleUser.getEmail());
 
         verify(userRepository, never()).findById(exampleUser.getId());
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).save(exampleUser);
 
     }
-
     @Test
-    public void changeHeightTest_Normal_Success() {
-        //this is a simple case, height should be updated after
-        //calling the function with a height > 0
+    public void updateUserInfoTest_invalidAge_shouldViolateConstraint() {
+        //this case will also be handled in the code because it checks
+        //if age is greater than 0, but here specifically we will check
+        //that it is handled by validator
         User exampleUser = createExampleUser();
 
         when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
 
-        boolean result = userService.changeHeight(exampleUser.getId(), BigDecimal.valueOf(65.0));
 
-        assertTrue(result);
-        assertEquals(BigDecimal.valueOf(65.0), exampleUser.getHeight());
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setAge(-1);
 
-        verify(userRepository, times(1)).findById(exampleUser.getId());
-        verify(userRepository, times(1)).save(exampleUser);
+        Set<ConstraintViolation<UserUpdateDto>> violations = validator.validate(userUpdateDto);
+        assertFalse(violations.isEmpty());
 
-    }
+        ConstraintViolation<UserUpdateDto> violation = violations.iterator().next();
 
-    @Test
-    public void changeHeightTest_negativeWeight_shouldThrowException() {
-        //user enters negative height, we need to make sure the method
-        //throws an illegalArgumentException and the repository doesn't save
-        User exampleUser = createExampleUser();
+        assertEquals("must be greater than or equal to 0", violation.getMessage());
 
-        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+        //checking that age never changed
+        assertEquals(30, exampleUser.getAge());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            userService.changeHeight(createExampleUser().getId(), BigDecimal.valueOf(-50.0));
-        });
-
-        assertEquals("Height must be greater than or equal to 0", exception.getMessage());
         verify(userRepository, never()).findById(exampleUser.getId());
         verify(userRepository, never()).save(exampleUser);
     }
 
     @Test
-    public void changeHeightTest_nullWeight_shouldThrowException() {
-        //user enters null in the height, so method must throw an
-        //illegalArgumentException
+    public void updateUserInfoTest_mixedCase_shouldCastToLowerCase() {
+        // mixed case we want to make sure that everything is cast to lowercase correctly
         User exampleUser = createExampleUser();
 
         when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            userService.changeHeight(createExampleUser().getId(), null);
-        });
 
-        assertEquals("Height must be greater than or equal to 0", exception.getMessage());
-        verify(userRepository, never()).findById(exampleUser.getId());
-        verify(userRepository, never()).save(exampleUser);
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setWeight(BigDecimal.valueOf(67.5));
+        userUpdateDto.setEmail("UPDATED_email@GMAIL.COm");
+        userUpdateDto.setUsername("UPDATed_UseRNAme");
+        userUpdateDto.setMetricSystem(true);
+        userUpdateDto.setAge(46);
+        userUpdateDto.setHeight(BigDecimal.valueOf(70.0));
 
+        boolean result = userService.updateUserInfo(exampleUser.getId(), userUpdateDto);
+
+        assertTrue(result);
+        assertEquals(46, exampleUser.getAge());
+        assertEquals("updated_username", exampleUser.getUsername());
+        assertTrue(exampleUser.isMetricSystem());
+        assertEquals(BigDecimal.valueOf(70.0), exampleUser.getHeight());
+        assertEquals("updated_email@gmail.com", exampleUser.getEmail());
+        assertEquals(BigDecimal.valueOf(67.5),exampleUser.getWeight());
+        verify(userRepository, times(1)).findById(exampleUser.getId());
+        verify(userRepository, times(1)).save(exampleUser);
     }
 
     @Test
-    public void changeHeightTest_extraDecimalPlaces_shouldRoundToOne() {
-        //user enters multiple decimal places, the method should
-        //round it to one decimal place and successfully save
+    public void updateUserInfoTest_invalidWeight_shouldViolateConstraint() {
+        //this will also be handled by validator but is still covered in the method as well
         User exampleUser = createExampleUser();
 
         when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
 
-        boolean result = userService.changeHeight(exampleUser.getId(), BigDecimal.valueOf(65.43434444));
 
-        assertTrue(result);
-        assertEquals(BigDecimal.valueOf(65.4), exampleUser.getHeight());
-        verify(userRepository, times(1)).findById(exampleUser.getId());
-        verify(userRepository, times(1)).save(exampleUser);
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setWeight(BigDecimal.valueOf(-78.0));
 
+        Set<ConstraintViolation<UserUpdateDto>> violations = validator.validate(userUpdateDto);
+        assertFalse(violations.isEmpty());
+
+        ConstraintViolation<UserUpdateDto> violation = violations.iterator().next();
+
+        assertEquals("must be greater than or equal to 0.0", violation.getMessage());
+
+        //checking that weight never changed
+        assertEquals(BigDecimal.valueOf(170.0), exampleUser.getWeight());
+
+        verify(userRepository, never()).findById(exampleUser.getId());
+        verify(userRepository, never()).save(exampleUser);
+    }
+
+    @Test
+    public void updateUserInfoTest_invalidHeight_shouldViolateConstraint() {
+        //this will also be handled by validator but is still covered in the method as well
+        User exampleUser = createExampleUser();
+
+        when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
+
+
+        UserUpdateDto userUpdateDto = new UserUpdateDto();
+        userUpdateDto.setHeight(BigDecimal.valueOf(-78.0));
+
+        Set<ConstraintViolation<UserUpdateDto>> violations = validator.validate(userUpdateDto);
+        assertFalse(violations.isEmpty());
+
+        ConstraintViolation<UserUpdateDto> violation = violations.iterator().next();
+
+        assertEquals("must be greater than or equal to 0.0", violation.getMessage());
+
+        //checking that height never changed
+        assertEquals(BigDecimal.valueOf(70.0), exampleUser.getHeight());
+
+        verify(userRepository, never()).findById(exampleUser.getId());
+        verify(userRepository, never()).save(exampleUser);
     }
 
     @Test
@@ -437,16 +552,16 @@ public class UserServiceTest {
 
         when(userRepository.findById(exampleUser.getId())).thenReturn(Optional.of(exampleUser));
 
-        User foundUser = userService.getUserInfo(exampleUser.getId());
+        Optional<User> foundUser = userService.getUserInfo(exampleUser.getId());
 
-        assertEquals(1L, foundUser.getId());
-        assertEquals("Test User", foundUser.getFullName());
-        assertEquals("test@gmail.com", foundUser.getEmail());
-        assertEquals("password", foundUser.getPassword());
-        assertEquals("test_user", foundUser.getUsername());
-        assertEquals(BigDecimal.valueOf(170.0), foundUser.getWeight());
-        assertEquals(BigDecimal.valueOf(70.0), foundUser.getHeight());
-        assertFalse(foundUser.isMetricSystem());
+        assertEquals(1L, foundUser.get().getId());
+        assertEquals("Test User", foundUser.get().getFullName());
+        assertEquals("test@gmail.com", foundUser.get().getEmail());
+        assertEquals("password", foundUser.get().getPassword());
+        assertEquals("test_user", foundUser.get().getUsername());
+        assertEquals(BigDecimal.valueOf(170.0), foundUser.get().getWeight());
+        assertEquals(BigDecimal.valueOf(70.0), foundUser.get().getHeight());
+        assertFalse(foundUser.get().isMetricSystem());
 
         verify(userRepository, times(1)).findById(exampleUser.getId());
 
@@ -503,6 +618,7 @@ public class UserServiceTest {
         user.setWeight(BigDecimal.valueOf(170.0));
         user.setHeight(BigDecimal.valueOf(70.0));
         user.setMetricSystem(false);
+        user.setAge(30);
 
         return user;
     }

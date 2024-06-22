@@ -1,5 +1,6 @@
 package com.eguglielmelli.service;
 import com.eguglielmelli.dtos.UserDto;
+import com.eguglielmelli.dtos.UserUpdateDto;
 import com.eguglielmelli.entities.User;
 import com.eguglielmelli.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import javax.transaction.Transactional;
 import javax.validation.Valid;
+import javax.validation.Validator;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Optional;
@@ -22,10 +24,12 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+
     @Autowired
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, Validator validator) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+
     }
 
     /**
@@ -35,6 +39,9 @@ public class UserService {
      */
     @Transactional
     public User createUser(@Valid UserDto userDto) {
+        if(userDto == null) {
+            throw new IllegalArgumentException("UserDto cannot be null");
+        }
 
         //validate the given information
         validateUserBeforeCreation(userDto);
@@ -43,8 +50,8 @@ public class UserService {
         BigDecimal weight = Optional.ofNullable(userDto.getWeight()).orElse(BigDecimal.ZERO);
 
         User user = new User(
-                userDto.getFullName(),userDto.getUsername(),userDto.getPassword(),
-                userDto.getEmail(),userDto.getAge(), weight, height,
+                userDto.getFullName().toLowerCase(),userDto.getUsername().toLowerCase(),userDto.getPassword(),
+                userDto.getEmail().toLowerCase(),userDto.getAge(), weight, height,
                 userDto.isMetricSystem(),false
         );
         //VERY IMPORTANT: encode user password before sending to the repository
@@ -52,6 +59,42 @@ public class UserService {
         userDto.setPassword(encodedPassword);
 
         return userRepository.save(user);
+    }
+
+    /**
+     * This method will handle all updates to user info, EXCEPT PASSWORD (this will be handled in a different
+     * method since it is more complex)
+     * Users do not have to include all information, they can choose what to include
+     * but the validator will still make sure requirements are abided by (i.e valid email format etc)
+     * @param id of user
+     * @param userUpdateDto user data transfer object containing all of the new info
+     * @return true if updated, false otherwise
+     */
+    @Transactional
+    public boolean updateUserInfo(Long id, @Valid UserUpdateDto userUpdateDto) {
+        return updateUser(id, user ->  {
+            if(userUpdateDto.getEmail() != null && !userUpdateDto.getEmail().isEmpty()) {
+                user.setEmail(userUpdateDto.getEmail().toLowerCase());
+            }
+            if(userUpdateDto.getAge() > 0) {
+                user.setAge(userUpdateDto.getAge());
+            }
+            if(userUpdateDto.getUsername() != null && !userUpdateDto.getUsername().isEmpty()) {
+                user.setUsername(userUpdateDto.getUsername().toLowerCase());
+            }
+            if(userUpdateDto.getHeight() != null && userUpdateDto.getHeight().compareTo(BigDecimal.ZERO) > 0) {
+                user.setHeight(userUpdateDto.getHeight().setScale(1,RoundingMode.HALF_UP));
+            }
+            if(userUpdateDto.getWeight() != null && userUpdateDto.getWeight().compareTo(BigDecimal.ZERO) > 0) {
+                user.setWeight(userUpdateDto.getWeight().setScale(1, RoundingMode.HALF_UP));
+            }
+            if(userUpdateDto.getPassword() != null && !userUpdateDto.getPassword().isEmpty()) {
+                user.setPassword(passwordEncoder.encode(userUpdateDto.getPassword()));
+            }
+            if(userUpdateDto.isMetricSystem() != user.isMetricSystem()) {
+                user.setMetricSystem(userUpdateDto.isMetricSystem());
+            }
+        });
     }
 
     /**
@@ -66,63 +109,15 @@ public class UserService {
     }
 
     /**
-     * Gives user opportunity to switch measurement system if they like (i.e. from metric to imperial)
-     * @param id of the user
-     * @param measurementSystem boolean: true for metric, false for imperial
-     * @return true if correctly set, else false
-     */
-    @Transactional
-    public boolean changeMeasurementSystem(Long id, boolean measurementSystem) {
-        return updateUser(id, user -> user.setMetricSystem(measurementSystem));
-    }
-
-    /**
-     * Gives user the opportunity to change their weight
-     * such as if they decided to forego during profile setup or if they
-     * just want to change it
-     * @param id of user
-     * @param weight of user
-     * @return true if successfully saved, otherwise false
-     */
-    @Transactional
-    public boolean changeWeight(Long id, BigDecimal weight) {
-        if(weight == null || weight.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Weight must be greater than or equal to 0");
-        }
-        BigDecimal roundedWeight = weight.setScale(1, RoundingMode.HALF_UP);
-        return updateUser(id, user -> user.setWeight(roundedWeight));
-    }
-
-    /**
-     * Gives user the opportunity to change their height
-     * @param id of user
-     * @param height new height they enter
-     * throws exception if user enters null or negative weight
-     * @return true if height updated, false if not
-     */
-    @Transactional
-    public boolean changeHeight(Long id, BigDecimal height) {
-        if(height == null || height.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Height must be greater than or equal to 0");
-        }
-
-        BigDecimal roundedHeight = height.setScale(1, RoundingMode.HALF_UP);
-        return updateUser(id, user -> user.setHeight(roundedHeight));
-    }
-
-    /**
      * Method to get user's info such as name, password etc
      * This will be displayed in a menu where users can adjust info as needed
      * @param id of user
      * @return user object corresponding to the given id
      */
     @Transactional
-    public User getUserInfo(Long id) {
-        Optional<User> foundUser = userRepository.findById(id);
-        if(foundUser.isPresent()) {
-            return foundUser.get();
-        }
-        throw new RuntimeException("User with that id is not found");
+    public Optional<User> getUserInfo(Long id) {
+        return Optional.ofNullable(userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User with that id is not found")));
     }
 
 
@@ -158,7 +153,7 @@ public class UserService {
             throw new IllegalArgumentException("Password must not be empty or null.");
         }
 
-        Integer age = Optional.ofNullable(userDto.getAge()).orElse(0);
+        Integer age = Optional.of(userDto.getAge()).orElse(0);
         if(age < 0) {
             throw new IllegalArgumentException("Age must be greater than 0.");
         }
@@ -181,4 +176,5 @@ public class UserService {
         }
         return false;
     }
+
 }
