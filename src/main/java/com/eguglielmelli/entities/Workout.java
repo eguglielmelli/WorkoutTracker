@@ -33,8 +33,9 @@ public class Workout {
     private int caloriesBurned;
 
     @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(name = "workout_type",nullable = false)
-    private String workoutType;
+    private WorkoutType workoutType;
 
     @NotNull
     @ManyToOne
@@ -45,7 +46,7 @@ public class Workout {
 
     }
 
-    public Workout(String name, String notes, int durationInMinutes, LocalDate date, int caloriesBurned, String workoutType, User user) {
+    public Workout(String name, String notes, int durationInMinutes, LocalDate date, int caloriesBurned, WorkoutType workoutType, User user) {
         this.name = name;
         this.notes = notes;
         this.durationInMinutes = durationInMinutes;
@@ -103,11 +104,11 @@ public class Workout {
         this.caloriesBurned = caloriesBurned;
     }
 
-    public String getWorkoutType() {
+    public WorkoutType getWorkoutType() {
         return workoutType;
     }
 
-    public void setWorkoutType(String workoutType) {
+    public void setWorkoutType(WorkoutType workoutType) {
         this.workoutType = workoutType;
     }
 

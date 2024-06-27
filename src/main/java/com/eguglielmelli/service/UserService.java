@@ -56,7 +56,7 @@ public class UserService {
         );
         //VERY IMPORTANT: encode user password before sending to the repository
         String encodedPassword = passwordEncoder.encode(userDto.getPassword());
-        userDto.setPassword(encodedPassword);
+        user.setPassword(encodedPassword);
 
         return userRepository.save(user);
     }

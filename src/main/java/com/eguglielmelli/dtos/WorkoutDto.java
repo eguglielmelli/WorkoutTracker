@@ -1,5 +1,6 @@
 package com.eguglielmelli.dtos;
 import com.eguglielmelli.entities.User;
+import com.eguglielmelli.entities.WorkoutType;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDate;
 
@@ -19,7 +20,7 @@ public class WorkoutDto {
     private int caloriesBurned;
 
     @NotNull
-    private String workoutType;
+    private WorkoutType workoutType;
 
     @NotNull
     private User user;
@@ -64,11 +65,11 @@ public class WorkoutDto {
         this.caloriesBurned = caloriesBurned;
     }
 
-    public String getWorkoutType() {
+    public WorkoutType getWorkoutType() {
         return workoutType;
     }
 
-    public void setWorkoutType(String workoutType) {
+    public void setWorkoutType(WorkoutType workoutType) {
         this.workoutType = workoutType;
     }
 

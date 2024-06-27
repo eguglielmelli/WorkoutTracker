@@ -34,6 +34,19 @@ public class UserDto {
 
     private boolean metricSystem = false;
 
+    public UserDto() {};
+
+    public UserDto(String fullName, String username, String email, String password, int age, BigDecimal height, BigDecimal weight, boolean metricSystem) {
+        this.fullName = fullName;
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.age = age;
+        this.height = height;
+        this.weight = weight;
+        this.metricSystem = metricSystem;
+    }
+
 
     public String getFullName() {
         return fullName;

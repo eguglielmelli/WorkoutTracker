@@ -5,8 +5,10 @@ import com.eguglielmelli.dtos.WorkoutDto;
 import com.eguglielmelli.dtos.WorkoutUpdateDto;
 import com.eguglielmelli.entities.User;
 import com.eguglielmelli.entities.Workout;
+import com.eguglielmelli.entities.WorkoutType;
 import com.eguglielmelli.repositories.UserRepository;
 import com.eguglielmelli.repositories.WorkoutRepository;
+import org.hibernate.jdbc.Work;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -15,8 +17,7 @@ import org.mockito.MockitoAnnotations;
 
 import javax.validation.*;
 import java.time.LocalDate;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,7 +50,7 @@ public class WorkoutServiceTest {
         //so that is where the user comes from
         WorkoutDto workoutDto = createWorkoutDto();
 
-        Workout workout = new Workout("Workout 1","Example Notes for a given workout",21,LocalDate.parse("2024-06-21"),100,"cardio",createUserForWorkout());
+        Workout workout = new Workout("Workout 1","Example Notes for a given workout",21,LocalDate.parse("2024-06-21"),100, WorkoutType.RUNNING,createUserForWorkout());
         when(workoutRepository.save(any(Workout.class))).thenReturn(workout);
         when(userRepository.findById(createWorkoutDto().getUser().getId())).thenReturn(Optional.ofNullable(workoutDto.getUser()));
 
@@ -176,8 +177,9 @@ public class WorkoutServiceTest {
 
         when(workoutRepository.findById(sampleWorkout.getId())).thenReturn(Optional.of(sampleWorkout));
 
-        workoutService.deleteWorkout(sampleWorkout.getId());
+        boolean deleted = workoutService.deleteWorkout(sampleWorkout.getId());
 
+        assertTrue(deleted);
         verify(workoutRepository, times(1)).findById(sampleWorkout.getId());
         verify(workoutRepository, times(1)).delete(sampleWorkout);
     }
@@ -194,7 +196,7 @@ public class WorkoutServiceTest {
            workoutService.deleteWorkout(sampleWorkout.getId());
         });
 
-        assertEquals("Workout with that ID not found", exception.getMessage());
+        assertEquals("Workout with that id was not found", exception.getMessage());
         verify(workoutRepository, times(1)).findById(sampleWorkout.getId());
         verify(workoutRepository, never()).delete(sampleWorkout);
     }
@@ -206,7 +208,7 @@ public class WorkoutServiceTest {
         Workout sampleWorkout = createSampleWorkout();
 
         WorkoutUpdateDto workoutUpdateDto = new WorkoutUpdateDto();
-        workoutUpdateDto.setWorkoutType("Running");
+        workoutUpdateDto.setWorkoutType(WorkoutType.RUNNING);
         workoutUpdateDto.setName("Updated workout");
         workoutUpdateDto.setCaloriesBurned(10000);
 
@@ -215,7 +217,7 @@ public class WorkoutServiceTest {
         boolean result = workoutService.updateWorkoutInfo(sampleWorkout.getId(), workoutUpdateDto);
 
         assertTrue(result);
-        assertEquals("Running", sampleWorkout.getWorkoutType());
+        assertEquals(WorkoutType.RUNNING, sampleWorkout.getWorkoutType());
         assertEquals("Updated workout", sampleWorkout.getName());
         assertEquals(10000, sampleWorkout.getCaloriesBurned());
         verify(workoutRepository, times(1)).findById(sampleWorkout.getId());
@@ -233,14 +235,14 @@ public class WorkoutServiceTest {
 
         WorkoutUpdateDto workoutUpdateDto = new WorkoutUpdateDto();
         workoutUpdateDto.setName(null);
-        workoutUpdateDto.setWorkoutType("Running");
+        workoutUpdateDto.setWorkoutType(WorkoutType.RUNNING);
 
         boolean result = workoutService.updateWorkoutInfo(sampleWorkout.getId(), workoutUpdateDto);
         assertTrue(result);
 
         //making sure that workout name hasn't changed, but workout type has
         assertEquals("Workout 1", sampleWorkout.getName());
-        assertEquals("Running", sampleWorkout.getWorkoutType());
+        assertEquals(WorkoutType.RUNNING, sampleWorkout.getWorkoutType());
         verify(workoutRepository, times(1)).save(sampleWorkout);
     }
     @Test
@@ -296,7 +298,7 @@ public class WorkoutServiceTest {
 
         assertTrue(result);
         assertEquals("Example Notes for a given workout", sampleWorkout.getNotes());
-        assertEquals("cardio", sampleWorkout.getWorkoutType());
+        assertEquals(WorkoutType.RUNNING, sampleWorkout.getWorkoutType());
     }
 
     @Test
@@ -309,7 +311,7 @@ public class WorkoutServiceTest {
         Workout foundWorkout = workoutService.getWorkoutInfo(sampleWorkout.getId());
 
         assertNotNull(foundWorkout);
-        assertEquals("cardio", foundWorkout.getWorkoutType());
+        assertEquals(WorkoutType.RUNNING, foundWorkout.getWorkoutType());
         assertEquals("Workout 1", foundWorkout.getName());
         assertEquals(100, foundWorkout.getCaloriesBurned());
         assertEquals("Example Notes for a given workout", foundWorkout.getNotes());
@@ -335,8 +337,79 @@ public class WorkoutServiceTest {
         verify(workoutRepository, never()).save(sampleWorkout);
     }
 
+    @Test
+    public void getUserWorkoutsTest_Normal_Success() {
+        //normal case with two example workouts
+        //just to make sure everything is working as intended
+        User user = createUserForWorkout();
 
+        //set up our workouts and add them to the list
+        //changing some details from the workouts just to
+        //make sure they are distinct
+        List<Workout> testListOfWorkouts = new ArrayList<>();
+        Workout exampleWorkout1 = createSampleWorkout();
+        exampleWorkout1.setWorkoutType(WorkoutType.RUNNING);
+        exampleWorkout1.setCaloriesBurned(1000);
+        Workout exampleWorkout2 = createSampleWorkout();
+        exampleWorkout2.setWorkoutType(WorkoutType.RUNNING);
+        exampleWorkout2.setCaloriesBurned(500);
+        testListOfWorkouts.add(exampleWorkout1);
+        testListOfWorkouts.add(exampleWorkout2);
 
+        //important, return a user with this id
+        //and then the list of workouts
+        when(userRepository.findById(user.getId())).thenReturn(
+                Optional.of(user));
+
+        when(workoutRepository.findByUser_id(user.getId())).thenReturn(
+                testListOfWorkouts);
+
+        List<Workout> foundListOfWorkouts = workoutService.getUsersWorkouts(user.getId());
+
+        //check up on our changed details just to make sure everything
+        //is correct
+        assertEquals(2, foundListOfWorkouts.size());
+        assertEquals(exampleWorkout1, foundListOfWorkouts.get(0));
+        assertEquals(WorkoutType.RUNNING, foundListOfWorkouts.get(0).getWorkoutType());
+        assertEquals(exampleWorkout2, foundListOfWorkouts.get(1));
+        assertEquals(WorkoutType.RUNNING, foundListOfWorkouts.get(1).getWorkoutType());
+        verify(workoutRepository, times(1)).findByUser_id(user.getId());
+    }
+
+    @Test
+    public void getUserWorkoutsTest_userNotFound_shouldThrowException() {
+        //sample case where we throw an exception
+        //because a user with that id does not exist
+        User user = createUserForWorkout();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+                    workoutService.getUsersWorkouts(user.getId());
+                });
+
+        assertEquals("User with that id is not found", exception.getMessage());
+        verify(workoutRepository, never()).findByUser_id(user.getId());
+    }
+
+    @Test
+    public void getUserWorkoutsTest_userIdValidButNoWorkouts_shouldReturnEmptyList() {
+        //user id is valid but this user hasn't created any workouts yet,
+        //we just expect a simple empty list
+        User user = createUserForWorkout();
+        List<Workout> emptyWorkoutList = new ArrayList<>();
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        when(workoutRepository.findByUser_id(user.getId())).
+                thenReturn(emptyWorkoutList);
+
+        List<Workout> resultList = workoutService.getUsersWorkouts(user.getId());
+
+        assertEquals(0, resultList.size());
+        verify(userRepository, times(1)).findById(user.getId());
+        verify(workoutRepository, times(1)).findByUser_id(user.getId());
+
+    }
 
     /**
      * Helper method to set up a dto for testing createWorkout() specifically
@@ -347,7 +420,7 @@ public class WorkoutServiceTest {
         User user = createUserForWorkout();
 
         WorkoutDto workoutDto = new WorkoutDto();
-        workoutDto.setWorkoutType("cardio");
+        workoutDto.setWorkoutType(WorkoutType.RUNNING);
         workoutDto.setDate(LocalDate.parse("2024-06-21"));
         workoutDto.setName("Workout 1");
         workoutDto.setNotes("Example Notes for a given workout");
@@ -383,7 +456,7 @@ public class WorkoutServiceTest {
         User user = createUserForWorkout();
         Workout workout = new Workout();
         workout.setId(1L);
-        workout.setWorkoutType("cardio");
+        workout.setWorkoutType(WorkoutType.RUNNING);
         workout.setDate(LocalDate.parse("2024-06-21"));
         workout.setName("Workout 1");
         workout.setNotes("Example Notes for a given workout");
