@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+/**
+ * Business logic for the Workout CRUD operations
+ */
 @Service
 public class WorkoutService {
 

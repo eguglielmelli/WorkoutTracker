@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.util.Optional;
 
+/**
+ * Controller class for users that will call the UserService CRUD Operations
+ */
 @RestController
 @RequestMapping("/api/users")
 public class UserController {

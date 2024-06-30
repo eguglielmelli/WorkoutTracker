@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.util.List;
 
+/**
+ * Workout controller that will call WorkoutService CRUD operations
+ */
 @RestController
 @RequestMapping("api/users/{userId}/workouts")
 public class WorkoutController {

@@ -2,6 +2,10 @@ package com.eguglielmelli.dtos;
 import javax.validation.constraints.*;
 import java.math.BigDecimal;
 
+/**
+ * This class is used for when a user is updating their info
+ * Similar to the regular dto, will pack up the information and send it back to the DB
+ */
 public class UserUpdateDto {
 
     @Email

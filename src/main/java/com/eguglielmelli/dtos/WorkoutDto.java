@@ -4,6 +4,9 @@ import com.eguglielmelli.entities.WorkoutType;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDate;
 
+/**
+ * Packs up the workout data entered by the user and sent back to the database
+ */
 public class WorkoutDto {
 
     @NotNull

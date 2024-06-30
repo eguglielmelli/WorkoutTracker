@@ -5,6 +5,9 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDate;
 
+/**
+ * Used for when the user wants to update workout details
+ */
 public class WorkoutUpdateDto {
     private String name;
 

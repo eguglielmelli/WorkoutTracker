@@ -3,6 +3,10 @@ package com.eguglielmelli.entities;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+/**
+ * Similar to height conversion, this class will convert imperial to metric or
+ * vice versa
+ */
 public class WeightConversion {
     public static final BigDecimal POUNDS_TO_KG = new BigDecimal("0.45359237");
     public static final BigDecimal KG_TO_POUNDS = new BigDecimal("2.20462262");

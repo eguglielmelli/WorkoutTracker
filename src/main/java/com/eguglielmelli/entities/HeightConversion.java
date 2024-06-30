@@ -3,6 +3,10 @@ package com.eguglielmelli.entities;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+/**
+ * Since we are storing all details using imperial system, this class will be used for
+ * people who use the metric system
+ */
 public class HeightConversion {
 
     private final BigDecimal CM_TO_INCHES = new BigDecimal("0.393701");

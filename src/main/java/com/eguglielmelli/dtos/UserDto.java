@@ -3,6 +3,10 @@ package com.eguglielmelli.dtos;
 import javax.validation.constraints.*;
 import java.math.BigDecimal;
 
+/**
+ * Class represents user data object
+ * Used when a user is being created, this will pack up their info and send it to the database
+ */
 public class UserDto {
 
     @NotNull
